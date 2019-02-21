@@ -167,6 +167,16 @@ func (p *Proxy) serveImage(w http.ResponseWriter, r *http.Request) {
 	}
 	resp, err := p.Client.Do(actualReq)
 
+	// ORIGINAL
+	// resp, err := p.Client.Get(req.String())
+	// /ORIGINAL
+	// MODIFIED
+	vcookie := r.Header.Get("Cookie")
+	vreq, err := http.NewRequest("GET", req.String(), nil)
+	vreq.Header.Set("Cookie", vcookie)
+	resp, err = p.Client.Do(vreq)
+	// /MODIFIED
+
 	if err != nil {
 		msg := fmt.Sprintf("error fetching remote image: %v", err)
 		p.log(msg)
@@ -413,9 +423,18 @@ func (t *TransformingTransport) RoundTrip(req *http.Request) (*http.Response, er
 		return t.Transport.RoundTrip(req)
 	}
 
+	u := *req.URL
 	f := req.URL.Fragment
-	req.URL.Fragment = ""
-	resp, err := t.CachingClient.Do(req)
+	u.Fragment = ""
+	// ORIGINAL
+	// resp, err := t.CachingClient.Get(u.String())
+	// /ORIGINAL
+	// MODIFIED
+	vcookie := req.Header.Get("Cookie")
+	vreq, err := http.NewRequest("GET", u.String(), nil)
+	vreq.Header.Set("Cookie", vcookie)
+	resp, err := t.CachingClient.Do(vreq)
+	// /MODIFIED
 	req.URL.Fragment = f
 	if err != nil {
 		return nil, err
