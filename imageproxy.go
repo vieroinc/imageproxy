@@ -188,7 +188,7 @@ func (p *Proxy) serveImage(w http.ResponseWriter, r *http.Request) {
 
 	cached := resp.Header.Get(httpcache.XFromCache)
 	if p.Verbose {
-		p.logf("request: %+v (served from cache: %t)", *actualReq, cached == "1")
+		p.logf("request: %+v (served from cache: %t) (%v) (%v)", *actualReq, cached == "1", r.Method, r.Header.Get("Origin"))
 	}
 
 	copyHeader(w.Header(), resp.Header, "Cache-Control", "Last-Modified", "Expires", "Etag", "Link")
@@ -215,7 +215,8 @@ func (p *Proxy) serveImage(w http.ResponseWriter, r *http.Request) {
 	copyHeader(w.Header(), resp.Header, "Content-Length")
 
 	//Enable CORS for 3rd party applications
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 	w.WriteHeader(resp.StatusCode)
 	io.Copy(w, resp.Body)
