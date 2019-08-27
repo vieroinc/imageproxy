@@ -191,7 +191,11 @@ func (p *Proxy) serveImage(w http.ResponseWriter, r *http.Request) {
 		p.logf("request: %+v (served from cache: %t) (%v) (%v)", *actualReq, cached == "1", r.Method, r.Header.Get("Origin"))
 	}
 
-	copyHeader(w.Header(), resp.Header, "Cache-Control", "Last-Modified", "Expires", "Etag", "Link")
+	if cached == "1" {
+		copyHeader(w.Header(), resp.Header, "Cache-Control", "Last-Modified", "Expires", "Etag", "Link")
+	} else {
+		copyHeader(w.Header(), resp.Header, "Cache-Control", "Last-Modified", "Expires", "Etag", "Link", "Set-Cookie")
+	}
 
 	if should304(r, resp) {
 		w.WriteHeader(http.StatusNotModified)
