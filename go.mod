@@ -32,6 +32,7 @@ require (
 	golang.org/x/sys v0.0.0-20190322080309-f49334f85ddc // indirect
 	google.golang.org/appengine v1.5.0 // indirect
 	google.golang.org/genproto v0.0.0-20190321212433-e79c0c59cdb5 // indirect
+	gopkg.in/h2non/bimg.v1 v1.0.19
 	willnorris.com/go/gifresize v1.0.0
 )
 

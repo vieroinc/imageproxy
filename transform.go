@@ -15,24 +15,14 @@
 package imageproxy
 
 import (
-	"bytes"
+	"errors"
 	"fmt"
-	"image"
-	_ "image/gif" // register gif format
-	"image/jpeg"
-	"image/png"
-	"io"
 	"log"
 	"math"
 
-	"github.com/disintegration/imaging"
-	"github.com/muesli/smartcrop"
-	"github.com/muesli/smartcrop/nfnt"
-	"github.com/rwcarlsen/goexif/exif"
-	"golang.org/x/image/bmp"    // register bmp format
-	"golang.org/x/image/tiff"   // register tiff format
-	_ "golang.org/x/image/webp" // register webp format
-	"willnorris.com/go/gifresize"
+	// register tiff format
+
+	"gopkg.in/h2non/bimg.v1"
 )
 
 // default compression quality of resized jpegs
@@ -42,7 +32,7 @@ const defaultQuality = 95
 const maxExifSize = 1 << 20
 
 // resample filter used when resizing images
-var resampleFilter = imaging.Lanczos
+// var resampleFilter = imaging.Lanczos
 
 // Transform the provided image.  img should contain the raw bytes of an
 // encoded image in one of the supported formats (gif, jpeg, or png).  The
@@ -54,17 +44,20 @@ func Transform(img []byte, opt Options) ([]byte, error) {
 	}
 
 	// decode image
-	m, format, err := image.Decode(bytes.NewReader(img))
-	if err != nil {
-		return nil, err
+	m := bimg.NewImage(img)
+	format := m.Type()
+	if m == nil {
+		return nil, errors.New("Could not parse image")
 	}
 
 	// apply EXIF orientation for jpeg and tiff source images. Read at most
 	// up to maxExifSize looking for EXIF tags.
 	if format == "jpeg" || format == "tiff" {
-		r := io.LimitReader(bytes.NewReader(img), maxExifSize)
-		if exifOpt := exifOrientation(r); exifOpt.transform() {
-			m = transformImage(m, exifOpt)
+		if exifOpt := exifOrientation(m); exifOpt.transform() {
+			err := transformImage(m, exifOpt)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -78,50 +71,37 @@ func Transform(img []byte, opt Options) ([]byte, error) {
 	}
 
 	// transform and encode image
-	buf := new(bytes.Buffer)
+	if format != "gif" && format != "jpeg" && format != "png" && format != "tiff" {
+
+		return nil, fmt.Errorf("unsupported format: %v", format)
+	}
+	var result []byte
+	err := transformImage(m, opt)
+	if err != nil {
+		return nil, err
+	}
 	switch format {
-	case "bmp":
-		m = transformImage(m, opt)
-		err = bmp.Encode(buf, m)
-		if err != nil {
-			return nil, err
-		}
 	case "gif":
-		fn := func(img image.Image) image.Image {
-			return transformImage(img, opt)
-		}
-		err = gifresize.Process(buf, bytes.NewReader(img), fn)
-		if err != nil {
-			return nil, err
-		}
+		result, err = m.Convert(bimg.GIF)
 	case "jpeg":
 		quality := opt.Quality
 		if quality == 0 {
 			quality = defaultQuality
 		}
-
-		m = transformImage(m, opt)
-		err = jpeg.Encode(buf, m, &jpeg.Options{Quality: quality})
-		if err != nil {
-			return nil, err
-		}
+		m.Process(bimg.Options{
+			Quality: quality,
+		})
+		result, err = m.Convert(bimg.JPEG)
 	case "png":
-		m = transformImage(m, opt)
-		err = png.Encode(buf, m)
-		if err != nil {
-			return nil, err
-		}
+		result, err = m.Convert(bimg.PNG)
 	case "tiff":
-		m = transformImage(m, opt)
-		err = tiff.Encode(buf, m, &tiff.Options{Compression: tiff.Deflate, Predictor: true})
-		if err != nil {
-			return nil, err
-		}
+		result, err = m.Convert(bimg.TIFF)
 	default:
-		return nil, fmt.Errorf("unsupported format: %v", format)
 	}
-
-	return buf.Bytes(), nil
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 // evaluateFloat interprets the option value f. If f is between 0 and 1, it is
@@ -139,12 +119,13 @@ func evaluateFloat(f float64, max int) int {
 
 // resizeParams determines if the image needs to be resized, and if so, the
 // dimensions to resize to.
-func resizeParams(m image.Image, opt Options) (w, h int, resize bool) {
+func performResize(m *bimg.Image, opt Options) error {
 	// convert percentage width and height values to absolute values
-	imgW := m.Bounds().Dx()
-	imgH := m.Bounds().Dy()
-	w = evaluateFloat(opt.Width, imgW)
-	h = evaluateFloat(opt.Height, imgH)
+	size, _ := m.Size()
+	imgW := size.Width
+	imgH := size.Height
+	w := evaluateFloat(opt.Width, imgW)
+	h := evaluateFloat(opt.Height, imgH)
 
 	// never resize larger than the original image unless specifically allowed
 	if !opt.ScaleUp {
@@ -158,32 +139,84 @@ func resizeParams(m image.Image, opt Options) (w, h int, resize bool) {
 
 	// if requested width and height match the original, skip resizing
 	if (w == imgW || w == 0) && (h == imgH || h == 0) {
-		return 0, 0, false
+		return nil
 	}
 
-	return w, h, true
+	if opt.Fit {
+		_, err := m.Process(bimg.Options{
+			Width:  w,
+			Height: h,
+			Crop:   false,
+			Force:  false,
+		})
+		if err != nil {
+			return err
+		}
+	} else {
+		if w == 0 {
+			_, err := m.Process(bimg.Options{
+				Height: h,
+				Crop:   false,
+				Force:  false,
+			})
+			if err != nil {
+				return err
+			}
+		} else if h == 0 {
+			_, err := m.Process(bimg.Options{
+				Width: w,
+				Crop:  false,
+				Force: false,
+			})
+			if err != nil {
+				return err
+			}
+		} else {
+			_, err := m.Process(bimg.Options{
+				Height: h,
+				Width:  w,
+				Force:  true,
+				Crop:   false,
+			})
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
-var smartcropAnalyzer = smartcrop.NewAnalyzer(nfnt.NewDefaultResizer())
+// var smartcropAnalyzer = smartcrop.NewAnalyzer(nfnt.NewDefaultResizer())
 
 // cropParams calculates crop rectangle parameters to keep it in image bounds
-func cropParams(m image.Image, opt Options) image.Rectangle {
+func performCrop(m *bimg.Image, opt Options) error {
+	size, _ := m.Size()
 	if !opt.SmartCrop && opt.CropX == 0 && opt.CropY == 0 && opt.CropWidth == 0 && opt.CropHeight == 0 {
-		return m.Bounds()
+		return nil
 	}
 
 	// width and height of image
-	imgW := m.Bounds().Dx()
-	imgH := m.Bounds().Dy()
+	imgW := size.Width
+	imgH := size.Height
 
 	if opt.SmartCrop {
 		w := evaluateFloat(opt.Width, imgW)
 		h := evaluateFloat(opt.Height, imgH)
-		r, err := smartcropAnalyzer.FindBestCrop(m, w, h)
+
+		log.Printf("smartcrop input: %dx%d", w, h)
+		_, err := m.Process(bimg.Options{
+			Width:   w,
+			Height:  h,
+			Crop:    true,
+			Gravity: bimg.GravitySmart,
+		})
 		if err != nil {
-			log.Printf("smartcrop error finding best crop: %v", err)
+			log.Printf("error with smartcrop: %v", err)
+			return err
 		} else {
-			return r
+			r, _ := m.Size()
+			log.Printf("smartcrop rectangle: %v", r)
+			return nil
 		}
 	}
 
@@ -217,11 +250,22 @@ func cropParams(m image.Image, opt Options) image.Rectangle {
 		y1 = imgH
 	}
 
-	return image.Rect(x0, y0, x1, y1)
+	if x1-x0 != size.Width || y1-y0 != size.Height {
+		_, err := m.Process(bimg.Options{
+			Left:   x0,
+			Top:    y0,
+			Width:  x1 - x0,
+			Height: y1 - y0,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // read EXIF orientation tag from r and adjust opt to orient image correctly.
-func exifOrientation(r io.Reader) (opt Options) {
+func exifOrientation(m *bimg.Image) (opt Options) {
 	// Exif Orientation Tag values
 	// http://sylvana.net/jpegcrop/exif_orientation.html
 	const (
@@ -235,18 +279,11 @@ func exifOrientation(r io.Reader) (opt Options) {
 		leftSideBottom  = 8
 	)
 
-	ex, err := exif.Decode(r)
+	metadata, err := m.Metadata()
 	if err != nil {
 		return opt
 	}
-	tag, err := ex.Get(exif.Orientation)
-	if err != nil {
-		return opt
-	}
-	orient, err := tag.Int(0)
-	if err != nil {
-		return opt
-	}
+	orient := metadata.Orientation
 
 	switch orient {
 	case topLeftSide:
@@ -273,48 +310,51 @@ func exifOrientation(r io.Reader) (opt Options) {
 
 // transformImage modifies the image m based on the transformations specified
 // in opt.
-func transformImage(m image.Image, opt Options) image.Image {
+func transformImage(m *bimg.Image, opt Options) error {
 	// Parse crop and resize parameters before applying any transforms.
 	// This is to ensure that any percentage-based values are based off the
 	// size of the original image.
-	rect := cropParams(m, opt)
-	w, h, resize := resizeParams(m, opt)
 
+	var err error
 	// crop if needed
-	if !m.Bounds().Eq(rect) {
-		m = imaging.Crop(m, rect)
-	}
+	performCrop(m, opt)
+
 	// resize if needed
-	if resize {
-		if opt.Fit {
-			m = imaging.Fit(m, w, h, resampleFilter)
-		} else {
-			if w == 0 || h == 0 {
-				m = imaging.Resize(m, w, h, resampleFilter)
-			} else {
-				m = imaging.Thumbnail(m, w, h, resampleFilter)
-			}
-		}
-	}
+	performResize(m, opt)
 
 	// rotate
 	rotate := float64(opt.Rotate) - math.Floor(float64(opt.Rotate)/360)*360
 	switch rotate {
 	case 90:
-		m = imaging.Rotate90(m)
+		_, err = m.Rotate(bimg.D90)
+		if err != nil {
+			return err
+		}
 	case 180:
-		m = imaging.Rotate180(m)
+		_, err = m.Rotate(bimg.D180)
+		if err != nil {
+			return err
+		}
 	case 270:
-		m = imaging.Rotate270(m)
+		_, err = m.Rotate(bimg.D270)
+		if err != nil {
+			return err
+		}
 	}
 
 	// flip
 	if opt.FlipVertical {
-		m = imaging.FlipV(m)
+		_, err = m.Flip()
+		if err != nil {
+			return err
+		}
 	}
 	if opt.FlipHorizontal {
-		m = imaging.FlipH(m)
+		_, err = m.Flop()
+		if err != nil {
+			return err
+		}
 	}
 
-	return m
+	return nil
 }

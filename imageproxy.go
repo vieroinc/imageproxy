@@ -171,9 +171,12 @@ func (p *Proxy) serveImage(w http.ResponseWriter, r *http.Request) {
 	// resp, err := p.Client.Get(req.String())
 	// /ORIGINAL
 	// MODIFIED
-	vcookie := r.Header.Get("Cookie")
 	vreq, err := http.NewRequest("GET", req.String(), nil)
-	vreq.Header.Set("Cookie", vcookie)
+	k := http.CanonicalHeaderKey("Cookie")
+	for _, v := range r.Header[k] {
+		vreq.Header.Add(k, v)
+		fmt.Println(fmt.Sprintf("%s: %s", k, v))
+	}
 	resp, err = p.Client.Do(vreq)
 	// /MODIFIED
 
@@ -191,10 +194,15 @@ func (p *Proxy) serveImage(w http.ResponseWriter, r *http.Request) {
 		p.logf("request: %+v (served from cache: %t) (%v) (%v)", *actualReq, cached == "1", r.Method, r.Header.Get("Origin"))
 	}
 
-	if cached == "1" {
-		copyHeader(w.Header(), resp.Header, "Cache-Control", "Last-Modified", "Expires", "Etag", "Link")
-	} else {
-		copyHeader(w.Header(), resp.Header, "Cache-Control", "Last-Modified", "Expires", "Etag", "Link", "Set-Cookie")
+	copyHeader(w.Header(), resp.Header, "Cache-Control", "Last-Modified", "Expires", "Etag", "Link")
+
+	if (cached != "1") {
+		k = http.CanonicalHeaderKey("Set-Cookie")
+		finalH := resp.Header
+		for _, v := range finalH[k] {
+			fmt.Println(fmt.Sprintf("%s: %s", k, v))
+			w.Header().Add(k, v)
+		}
 	}
 
 	if should304(r, resp) {
