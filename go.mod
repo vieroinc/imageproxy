@@ -7,6 +7,7 @@ require (
 	github.com/Azure/go-autorest v11.5.2+incompatible // indirect
 	github.com/PaulARoy/azurestoragecache v0.0.0-20170906084534-3c249a3ba788
 	github.com/aws/aws-sdk-go v1.19.0
+	github.com/bradfitz/gomemcache v0.0.0-20190329173943-551aad21a668
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/die-net/lrucache v0.0.0-20181227122439-19a39ef22a11
 	github.com/disintegration/imaging v1.6.0
