@@ -34,8 +34,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gregjones/httpcache"
 	tphttp "willnorris.com/go/imageproxy/third_party/http"
+	httpcache "willnorris.com/go/imageproxy/third_party/httpcache"
 )
 
 // Proxy serves image requests.
@@ -112,8 +112,9 @@ func NewProxy(transport http.RoundTripper, cache Cache) *Proxy {
 				}
 			},
 		},
-		Cache:               cache,
-		MarkCachedResponses: true,
+		Cache:                cache,
+		MarkCachedResponses:  true,
+		ExtraEndToEndHeaders: []string{"Set-Cookie"},
 	}
 
 	proxy.Client = client
@@ -141,6 +142,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // serveImage handles incoming requests for proxied images.
 func (p *Proxy) serveImage(w http.ResponseWriter, r *http.Request) {
+	// fmt.Println("serveImage")
 	req, err := NewRequest(r, p.DefaultBaseURL)
 	if err != nil {
 		msg := fmt.Sprintf("invalid request URL: %v", err)
@@ -165,7 +167,6 @@ func (p *Proxy) serveImage(w http.ResponseWriter, r *http.Request) {
 	if len(p.ContentTypes) != 0 {
 		actualReq.Header.Set("Accept", strings.Join(p.ContentTypes, ", "))
 	}
-	resp, err := p.Client.Do(actualReq)
 
 	// ORIGINAL
 	// resp, err := p.Client.Get(req.String())
@@ -175,9 +176,9 @@ func (p *Proxy) serveImage(w http.ResponseWriter, r *http.Request) {
 	k := http.CanonicalHeaderKey("Cookie")
 	for _, v := range r.Header[k] {
 		vreq.Header.Add(k, v)
-		fmt.Println(fmt.Sprintf("%s: %s", k, v))
+		// fmt.Println(fmt.Sprintf("%s: %s", k, v))
 	}
-	resp, err = p.Client.Do(vreq)
+	resp, err := p.Client.Do(vreq)
 	// /MODIFIED
 
 	if err != nil {
@@ -196,17 +197,16 @@ func (p *Proxy) serveImage(w http.ResponseWriter, r *http.Request) {
 
 	copyHeader(w.Header(), resp.Header, "Cache-Control", "Last-Modified", "Expires", "Etag", "Link")
 
-	if (cached != "1") {
-		k = http.CanonicalHeaderKey("Set-Cookie")
-		finalH := resp.Header
-		for _, v := range finalH[k] {
-			fmt.Println(fmt.Sprintf("%s: %s", k, v))
-			w.Header().Add(k, v)
-		}
+	// fmt.Println(resp.Header)
+	k = http.CanonicalHeaderKey("Set-Cookie")
+	for _, v := range resp.Header[k] {
+		fmt.Println(fmt.Sprintf("Forwarded in imageproxy %s: %s", k, v))
+		w.Header().Add(k, v)
 	}
 
 	if should304(r, resp) {
 		w.WriteHeader(http.StatusNotModified)
+		// fmt.Println("serveImage end")
 		return
 	}
 
@@ -220,6 +220,7 @@ func (p *Proxy) serveImage(w http.ResponseWriter, r *http.Request) {
 	if resp.ContentLength != 0 && !contentTypeMatches(p.ContentTypes, contentType) {
 		p.logf("content-type not allowed: %q", contentType)
 		http.Error(w, msgNotAllowed, http.StatusForbidden)
+		// fmt.Println("serveImage end")
 		return
 	}
 	w.Header().Set("Content-Type", contentType)
@@ -232,6 +233,7 @@ func (p *Proxy) serveImage(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(resp.StatusCode)
 	io.Copy(w, resp.Body)
+	// fmt.Println("serveImage end")
 }
 
 // peekContentType peeks at the first 512 bytes of p, and attempts to detect
@@ -443,9 +445,11 @@ func (t *TransformingTransport) RoundTrip(req *http.Request) (*http.Response, er
 	// resp, err := t.CachingClient.Get(u.String())
 	// /ORIGINAL
 	// MODIFIED
-	vcookie := req.Header.Get("Cookie")
 	vreq, err := http.NewRequest("GET", u.String(), nil)
-	vreq.Header.Set("Cookie", vcookie)
+	k := http.CanonicalHeaderKey("Cookie")
+	for _, v := range req.Header[k] {
+		vreq.Header.Add(k, v)
+	}
 	resp, err := t.CachingClient.Do(vreq)
 	// /MODIFIED
 	req.URL.Fragment = f
@@ -457,7 +461,13 @@ func (t *TransformingTransport) RoundTrip(req *http.Request) (*http.Response, er
 
 	if should304(req, resp) {
 		// bare 304 response, full response will be used from cache
-		return &http.Response{StatusCode: http.StatusNotModified}, nil
+		header := make(http.Header, 0)
+		k = http.CanonicalHeaderKey("Set-Cookie")
+		for _, v := range resp.Header[k] {
+			// fmt.Println(fmt.Sprintf("Forwarded in imageproxy %s: %s", k, v))
+			header.Add(k, v)
+		}
+		return &http.Response{StatusCode: http.StatusNotModified, Header: header}, nil
 	}
 
 	b, err := ioutil.ReadAll(resp.Body)
