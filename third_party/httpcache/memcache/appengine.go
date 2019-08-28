@@ -6,7 +6,7 @@
 // When not built for Google App Engine, this package will provide an
 // implementation that connects to a specified memcached server.  See the
 // memcache.go file in this package for details.
-package memcachee
+package memcache
 
 import (
 	"appengine"
