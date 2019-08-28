@@ -124,6 +124,19 @@ func NewProxy(transport http.RoundTripper, cache Cache) *Proxy {
 
 // ServeHTTP handles incoming requests.
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method == "OPTIONS" {
+		w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+		// TODO: make it dynamic, like below just syntax corrected
+		// acrh = r.Header.Get("Access-Control-Request-Headers")
+		// w.Header().Set("Access-Control-Allow-Headers", acrh)
+		w.Header().Set("Access-Control-Allow-Headers", "Cache-Control, Pragma")
+
+		return
+	}
+
 	if r.URL.Path == "/favicon.ico" {
 		return // ignore favicon requests
 	}
@@ -230,6 +243,7 @@ func (p *Proxy) serveImage(w http.ResponseWriter, r *http.Request) {
 	//Enable CORS for 3rd party applications
 	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Allow-Headers", "cache-control,pragma")
 
 	w.WriteHeader(resp.StatusCode)
 	io.Copy(w, resp.Body)
