@@ -53,7 +53,12 @@ func Transform(img []byte, opt Options) ([]byte, error) {
 	// apply EXIF orientation for jpeg and tiff source images. Read at most
 	// up to maxExifSize looking for EXIF tags.
 	if format == "jpeg" || format == "tiff" {
-		if exifOpt := exifOrientation(m); exifOpt.transform() {
+		exifOpt := exifOrientation(m)
+		m.Process(bimg.Options{
+			StripMetadata: true,
+			NoAutoRotate:  true,
+		})
+		if exifOpt.transform() {
 			err := transformImage(m, exifOpt)
 			if err != nil {
 				return nil, err
@@ -82,20 +87,17 @@ func Transform(img []byte, opt Options) ([]byte, error) {
 	}
 	switch format {
 	case "gif":
-		result, err = m.Convert(bimg.GIF)
+		result, err = m.Process(bimg.Options{Type: bimg.GIF})
 	case "jpeg":
 		quality := opt.Quality
 		if quality == 0 {
 			quality = defaultQuality
 		}
-		m.Process(bimg.Options{
-			Quality: quality,
-		})
-		result, err = m.Convert(bimg.JPEG)
+		result, err = m.Process(bimg.Options{Type: bimg.JPEG, Quality: quality})
 	case "png":
-		result, err = m.Convert(bimg.PNG)
+		result, err = m.Process(bimg.Options{Type: bimg.PNG})
 	case "tiff":
-		result, err = m.Convert(bimg.TIFF)
+		result, err = m.Process(bimg.Options{Type: bimg.TIFF})
 	default:
 	}
 	if err != nil {
@@ -295,15 +297,15 @@ func exifOrientation(m *bimg.Image) (opt Options) {
 	case bottomLeftSide:
 		opt.FlipVertical = true
 	case leftSideTop:
-		opt.Rotate = 90
+		opt.Rotate = -90
 		opt.FlipVertical = true
 	case rightSideTop:
-		opt.Rotate = -90
-	case rightSideBottom:
 		opt.Rotate = 90
+	case rightSideBottom:
+		opt.Rotate = -90
 		opt.FlipHorizontal = true
 	case leftSideBottom:
-		opt.Rotate = 90
+		opt.Rotate = -90
 	}
 	return opt
 }
@@ -323,7 +325,7 @@ func transformImage(m *bimg.Image, opt Options) error {
 	performResize(m, opt)
 
 	// rotate
-	rotate := float64(opt.Rotate) - math.Floor(float64(opt.Rotate)/360)*360
+	rotate := (int(opt.Rotate) + int(360)) % 360
 	switch rotate {
 	case 90:
 		_, err = m.Rotate(bimg.D90)
