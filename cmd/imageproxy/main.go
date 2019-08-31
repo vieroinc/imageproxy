@@ -61,10 +61,18 @@ func init() {
 }
 
 func main() {
+
+	/*
+		imagick.Initialize()
+		defer imagick.Terminate()
+
+		magicwand := imagick.NewMagickWand()
+	*/
+
 	envy.Parse("IMAGEPROXY")
 	flag.Parse()
 
-	p := imageproxy.NewProxy(nil, cache.Cache)
+	p := imageproxy.NewProxy(nil /*magicwand, */, cache.Cache)
 	if *allowHosts != "" {
 		p.AllowHosts = strings.Split(*allowHosts, ",")
 	}

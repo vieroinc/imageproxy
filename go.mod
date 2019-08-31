@@ -7,6 +7,7 @@ require (
 	github.com/Azure/go-autorest v11.5.2+incompatible // indirect
 	github.com/PaulARoy/azurestoragecache v0.0.0-20170906084534-3c249a3ba788
 	github.com/aws/aws-sdk-go v1.19.0
+	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
 	github.com/bradfitz/gomemcache v0.0.0-20190329173943-551aad21a668
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/die-net/lrucache v0.0.0-20181227122439-19a39ef22a11
@@ -23,6 +24,7 @@ require (
 	github.com/muesli/smartcrop v0.2.1-0.20181030220600-548bbf0c0965
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
 	github.com/peterbourgon/diskv v0.0.0-20171120014656-2973218375c3
+	github.com/quirkey/magick v0.0.0-20140324185457-b37664054620
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/satori/go.uuid v0.0.0-20180103174451-36e9d2ebbde5 // indirect
 	github.com/stretchr/testify v1.3.0 // indirect
@@ -33,6 +35,8 @@ require (
 	golang.org/x/sys v0.0.0-20190322080309-f49334f85ddc // indirect
 	google.golang.org/appengine v1.5.0 // indirect
 	google.golang.org/genproto v0.0.0-20190321212433-e79c0c59cdb5 // indirect
+	gopkg.in/gographics/imagick.v2 v2.5.0
+	gopkg.in/gographics/imagick.v3 v3.2.0
 	gopkg.in/h2non/bimg.v1 v1.0.19
 	willnorris.com/go/gifresize v1.0.0
 )

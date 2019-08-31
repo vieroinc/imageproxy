@@ -34,6 +34,7 @@ import (
 	"strings"
 	"time"
 
+	// "gopkg.in/gographics/imagick.v2/imagick"
 	tphttp "willnorris.com/go/imageproxy/third_party/http"
 	httpcache "willnorris.com/go/imageproxy/third_party/httpcache"
 )
@@ -86,10 +87,13 @@ type Proxy struct {
 	UserAgent string
 }
 
+// var magicwand *imagick.MagickWand
+
 // NewProxy constructs a new proxy.  The provided http RoundTripper will be
 // used to fetch remote URLs.  If nil is provided, http.DefaultTransport will
 // be used.
-func NewProxy(transport http.RoundTripper, cache Cache) *Proxy {
+func NewProxy(transport http.RoundTripper /*magicwandd *imagick.MagickWand, */, cache Cache) *Proxy {
+	// magicwand = magicwandd
 	if transport == nil {
 		transport = http.DefaultTransport
 	}

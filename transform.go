@@ -21,8 +21,8 @@ import (
 	"math"
 
 	// register tiff format
-
 	"gopkg.in/h2non/bimg.v1"
+	// "gopkg.in/gographics/imagick.v2/imagick"
 )
 
 // default compression quality of resized jpegs
@@ -93,7 +93,13 @@ func Transform(img []byte, opt Options) ([]byte, error) {
 		if quality == 0 {
 			quality = defaultQuality
 		}
-		result, err = m.Process(bimg.Options{Type: bimg.JPEG, Quality: quality})
+		result, err = m.Process(bimg.Options{Type: bimg.JPEG, Quality: quality, Interlace: true})
+
+		/*
+			err = magicwand.ReadImageBlob(result)
+			magicwand.SetImageInterlaceScheme(imagick.INTERLACE_JPEG)
+			result = magicwand.GetImageBlob();
+		*/
 	case "png":
 		result, err = m.Process(bimg.Options{Type: bimg.PNG})
 	case "tiff":
