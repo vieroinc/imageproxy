@@ -154,7 +154,7 @@ func performResize(m *bimg.Image, opt Options) error {
 		_, err := m.Process(bimg.Options{
 			Width:  w,
 			Height: h,
-			Crop:   false,
+			Embed:  true,
 			Force:  false,
 		})
 		if err != nil {
@@ -183,8 +183,8 @@ func performResize(m *bimg.Image, opt Options) error {
 			_, err := m.Process(bimg.Options{
 				Height: h,
 				Width:  w,
-				Force:  true,
-				Crop:   false,
+				Force:  false,
+				Crop:   true,
 			})
 			if err != nil {
 				return err
@@ -215,8 +215,9 @@ func performCrop(m *bimg.Image, opt Options) error {
 		_, err := m.Process(bimg.Options{
 			Width:   w,
 			Height:  h,
+			Force:   false,
 			Crop:    true,
-			Gravity: bimg.GravitySmart,
+			Gravity: bimg.GravityCentre,
 		})
 		if err != nil {
 			log.Printf("error with smartcrop: %v", err)
@@ -264,6 +265,7 @@ func performCrop(m *bimg.Image, opt Options) error {
 			Top:    y0,
 			Width:  x1 - x0,
 			Height: y1 - y0,
+			Crop:   true,
 		})
 		if err != nil {
 			return err
