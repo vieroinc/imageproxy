@@ -14,6 +14,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -41,7 +42,11 @@ type Cache interface {
 // cacheKey returns the cache key for req.
 func cacheKey(req *http.Request) string {
 	if req.Method == http.MethodGet {
-		return req.URL.String()
+		u, _ := url.Parse(req.URL.String())
+		q := u.Query()
+		q.Del("token")
+		u.RawQuery = q.Encode()
+		return u.String()
 	} else {
 		return req.Method + " " + req.URL.String()
 	}

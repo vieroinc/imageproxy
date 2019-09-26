@@ -143,6 +143,7 @@ github.com/quirkey/magick v0.0.0-20140324185457-b37664054620 h1:MsLx6A07NznUwoq9
 github.com/quirkey/magick v0.0.0-20140324185457-b37664054620/go.mod h1:AYql4DT3SqVH9ON+isFTHD9meJEbdXHb/ZcpQbVRhkQ=
 github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=
 github.com/rogpeppe/fastuuid v0.0.0-20150106093220-6724a57986af/go.mod h1:XWv6SoW27p1b0cqNHllgS5HIMJraePCO15w5zCzIWYg=
+github.com/rwcarlsen/goexif v0.0.0-20190318171057-76e3344f7516/go.mod h1:hPqNNc0+uJM6H+SuU8sEs5K5IQeKccPqeSjfgcKGgPk=
 github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd h1:CmH9+J6ZSsIjUK3dcGsnCnO41eRBOnY12zwkn5qVwgc=
 github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd/go.mod h1:hPqNNc0+uJM6H+SuU8sEs5K5IQeKccPqeSjfgcKGgPk=
 github.com/satori/go.uuid v0.0.0-20180103174451-36e9d2ebbde5 h1:tfcGHuraNSEY9xRb9ckCMqMD7xAjzrYI1WpD7DA+nz8=
@@ -267,3 +268,5 @@ honnef.co/go/tools v0.0.0-20190102054323-c2f93a96b099/go.mod h1:rf3lG4BRIbNafJWh
 honnef.co/go/tools v0.0.0-20190106161140-3f1c8253044a/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
 willnorris.com/go/gifresize v1.0.0 h1:GKS68zjNhHMqkgNTv4iFAO/j/sNcVSOHQ7SqmDAIAmM=
 willnorris.com/go/gifresize v1.0.0/go.mod h1:eBM8gogBGCcaH603vxSpnfjwXIpq6nmnj/jauBDKtAk=
+willnorris.com/go/imageproxy v0.9.0 h1:pjhb8K4co5Xo0Q/uCeDBPwAtXxZzgvb/Ue0jgYqDapE=
+willnorris.com/go/imageproxy v0.9.0/go.mod h1:SVC/wfHtCS4kjk3llMeuV4KlTN3a8XTgFWI8o7i3Avg=

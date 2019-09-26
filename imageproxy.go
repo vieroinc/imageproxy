@@ -35,8 +35,9 @@ import (
 	"time"
 
 	// "gopkg.in/gographics/imagick.v2/imagick"
-	tphttp "willnorris.com/go/imageproxy/third_party/http"
-	httpcache "willnorris.com/go/imageproxy/third_party/httpcache"
+
+	tphttp "willnorris.com/go/viero.tv/imageproxy/third_party/http"
+	httpcache "willnorris.com/go/viero.tv/imageproxy/third_party/httpcache"
 )
 
 // Proxy serves image requests.
@@ -453,6 +454,7 @@ func (t *TransformingTransport) RoundTrip(req *http.Request) (*http.Response, er
 		if t.log != nil {
 			t.log("fetching remote URL: %v", req.URL)
 		}
+
 		return t.Transport.RoundTrip(req)
 	}
 
