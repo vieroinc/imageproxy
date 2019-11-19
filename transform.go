@@ -15,12 +15,15 @@
 package imageproxy
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"log"
 	"math"
+	"os/exec"
 
 	// register tiff format
+
 	"gopkg.in/h2non/bimg.v1"
 	// "gopkg.in/gographics/imagick.v2/imagick"
 )
@@ -53,10 +56,14 @@ func Transform(img []byte, opt Options) ([]byte, error) {
 	// apply EXIF orientation for jpeg and tiff source images. Read at most
 	// up to maxExifSize looking for EXIF tags.
 	if format == "jpeg" || format == "tiff" {
+
+		/*metadata, _ := m.Metadata()
+		fmt.Println(metadata.Orientation)
+		fmt.Println(metadata.Profile)*/
+
 		exifOpt := exifOrientation(m)
 		m.Process(bimg.Options{
-			StripMetadata: true,
-			NoAutoRotate:  true,
+			NoAutoRotate: true,
 		})
 		if exifOpt.transform() {
 			err := transformImage(m, exifOpt)
@@ -64,6 +71,29 @@ func Transform(img []byte, opt Options) ([]byte, error) {
 				return nil, err
 			}
 		}
+		theImage := m.Image()
+
+		stdout := bytes.NewBuffer([]byte{})
+		cmd := exec.Command("exiftool", "-", "-Orientation#=1", "-o", "-")
+		cmd.Stdin = bytes.NewReader(theImage)
+		cmd.Stdout = stdout
+
+		err := cmd.Run()
+		if err != nil {
+			fmt.Println(err.Error)
+		} else {
+			m = bimg.NewImage(stdout.Bytes())
+		}
+
+		/*
+			image, _ := imaging.Decode(bytes.NewReader(img), imaging.AutoOrientation(true))
+			buf := bytes.NewBuffer([]byte{})
+			imaging.Encode(buf, image, imaging.JPEG)
+			m = bimg.NewImage(buf.Bytes())
+		*/
+		/*metadata, _ = m.Metadata()
+		fmt.Println(metadata.Orientation)
+		fmt.Println(metadata.Profile)*/
 	}
 
 	// encode webp and tiff as jpeg by default
@@ -296,24 +326,36 @@ func exifOrientation(m *bimg.Image) (opt Options) {
 	orient := metadata.Orientation
 
 	switch orient {
-	case topLeftSide:
+	case topLeftSide: // 1
 		// do nothing
-	case topRightSide:
-		opt.FlipHorizontal = true
-	case bottomRightSide:
+		break
+	case topRightSide: // 2
 		opt.Rotate = 180
-	case bottomLeftSide:
 		opt.FlipVertical = true
-	case leftSideTop:
-		opt.Rotate = -90
+		break
+	case bottomRightSide: // 3
+		opt.Rotate = 180
+		break
+	case bottomLeftSide: // 4
+		opt.Rotate = 180
 		opt.FlipVertical = true
-	case rightSideTop:
+		break
+	case leftSideTop: // 5
 		opt.Rotate = 90
-	case rightSideBottom:
-		opt.Rotate = -90
 		opt.FlipHorizontal = true
-	case leftSideBottom:
+		opt.FlipVertical = true
+		break
+	case rightSideTop: // 6
+		opt.Rotate = 90
+		break
+	case rightSideBottom: // 7
 		opt.Rotate = -90
+		opt.FlipVertical = true
+		opt.FlipHorizontal = true
+		break
+	case leftSideBottom: // 8
+		opt.Rotate = -90
+		break
 	}
 	return opt
 }
